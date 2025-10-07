@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Budgeting Software</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.5.3/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+    <link rel="icon" type="image/png" href="money.png">
+    <style>
+      body { 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0; 
+  padding: 0; 
+  height: 100vh;
+  overflow: hidden;
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Left Sidebar - Always Visible */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e5e5e7;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+}
+
+.sidebar-header {
+  padding: 0 20px 20px 20px;
+  border-bottom: 1px solid #e5e5e7;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 600;
+  color: #ff6b35;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.view-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.view-toggle button {
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #1d1d1f;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.95em;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-toggle button:hover {
+  background: #f5f5f7;
+}
+
+.view-toggle button.active {
+  background: #fff3e0;
+  color: #ff6b35;
+  border-left: 3px solid #ff6b35;
+  font-weight: 600;
+}
+
+.view-toggle button span {
+  flex: 1;
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f5f7;
+  overflow: hidden;
+}
+
+/* Top Bar with Submenu */
+.top-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e5e7;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.top-bar-title {
+  font-size: 1.3em;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-right: auto;
+}
+
+.submenu-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.submenu-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #86868b;
+  cursor: pointer;
+  font-size: 0.95em;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.submenu-btn:hover {
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.submenu-btn.active {
+  background: #ff6b35;
+  color: #ffffff;
+}
+
+/* Content Scroll Area */
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+}
+
+/* Content Bubble/Card */
+.content-bubble {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 24px;
+  min-height: 400px;
+}
+
+.content-bubble h2 {
+  margin: 0 0 24px 0;
+  font-size: 1.5em;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.content-bubble h3 {
+  margin: 20px 0 16px 0;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+/* View Content */
+.view-content {
+  display: none;
+}
+
+.view-content.active {
+  display: block;
+}
+
+/* Upload Section */
+.upload-section {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upload-section input[type="file"] {
+  padding: 12px;
+  border: 2px dashed #e5e5e7;
+  border-radius: 8px;
+  background: #f5f5f7;
+  cursor: pointer;
+  font-size: 0.95em;
+}
+
+.upload-section input[type="file"]:hover {
+  border-color: #ff6b35;
+  background: #fff3e0;
+}
+
+/* Primary Button */
+.primary-btn {
+  background: #ff6b35;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(255, 107, 53, 0.2);
+}
+
+.primary-btn:hover {
+  background: #ff5722;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  transform: translateY(-1px);
+}
+
+.primary-btn:active {
+  transform: translateY(0);
+}
+
+/* Select Dropdown */
+select {
+  background: #ffffff;
+  color: #1d1d1f;
+  border: 1.5px solid #e5e5e7;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.95em;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+select:focus {
+  border-color: #ff6b35;
+}
+
+select:hover {
+  border-color: #c7c7cc;
+}
+
+/* Transactions List */
+#transactionsList { 
+  max-height: 35vh;
+  min-height: 80px;
+  overflow-y: auto;
+  border: 1px solid #e5e5e7;
+  padding: 16px;
+  margin-top: 16px;
+  background: #f5f5f7;
+  border-radius: 8px;
+}
+
+#transactionsList > div {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e5e5e7;
+}
+
+/* Column Mapping */
+#columnMappingContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+#columnMappingContainer label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  color: #1d1d1f;
+}
+
+/* Category Summary */
+.category-summary {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid #e5e5e7;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+  font-size: 1.1em;
+}
+
+.category-total {
+  color: #ff6b35;
+  font-size: 1.2em;
+}
+
+.category-timeframe {
+  color: #86868b;
+  font-size: 0.85em;
+  font-weight: normal;
+  margin-left: 12px;
+}
+
+.subcategory-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f7;
+}
+
+.subcategory-item:last-child {
+  border-bottom: none;
+}
+
+.subcategory-name {
+  color: #1d1d1f;
+}
+
+.subcategory-amount {
+  color: #ff6b35;
+  font-weight: 600;
+}
+
+/* Summary Stats */
+.summary-stats {
+  background: #f5f5f7;
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 32px;
+}
+
+.summary-stats h3 {
+  margin-top: 0;
+  color: #1d1d1f;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e5e7;
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.stat-value {
+  color: #ff6b35;
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+.stat-value.income {
+  color: #34c759;
+}
+
+.stat-value.net-positive {
+  color: #34c759;
+}
+
+.stat-value.net-negative {
+  color: #ff3b30;
+}
+
+/* Summary Header */
+.summary-header {
+  margin-bottom: 24px;
+}
+
+.summary-title {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+/* Loading Bar */
+.loading-container {
+  display: none;
+  margin: 24px 0;
+  padding: 24px;
+  background: #f5f5f7;
+  border-radius: 12px;
+  border: 1px solid #e5e5e7;
+}
+
+.loading-container.show {
+  display: block;
+}
+
+.loading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.loading-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #ff6b35;
+}
+
+.loading-status {
+  font-size: 0.9em;
+  color: #86868b;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 24px;
+  background: #e5e5e7;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b35, #ff8c42);
+  border-radius: 12px;
+  transition: width 0.3s ease;
+  width: 0%;
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 0.9em;
+  color: #86868b;
+  margin-top: 8px;
+}
+
+.training-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e5e7;
+  font-size: 0.85em;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat .stat-value {
+  display: block;
+  font-weight: 700;
+  color: #ff6b35;
+  font-size: 1.3em;
+}
+
+/* Daily Transactions */
+.day-group {
+  margin-bottom: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  border: 1px solid #e5e5e7;
+}
+
+.day-header {
+  background: #f5f5f7;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.day-date {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.day-total {
+  font-size: 1.1em;
+  font-weight: 700;
+  color: #ff6b35;
+}
+
+.day-total.negative {
+  color: #ff3b30;
+}
+
+.day-total.positive {
+  color: #34c759;
+}
+
+.transactions-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.transaction-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f5f5f7;
+  transition: background-color 0.2s;
+}
+
+.transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-item:hover {
+  background: #fafafa;
+}
+
+.transaction-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.transaction-description {
+  font-weight: 500;
+  color: #1d1d1f;
+  font-size: 1em;
+}
+
+.transaction-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 0.85em;
+  color: #86868b;
+}
+
+.transaction-category {
+  color: #ff6b35;
+  font-weight: 500;
+}
+
+.transaction-account {
+  color: #86868b;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.transaction-account:hover {
+  background: #f5f5f7;
+}
+
+.transaction-account.editing {
+  background: #fff3e0;
+  border: 1px solid #ff6b35;
+}
+
+.transaction-amount {
+  font-weight: 700;
+  font-size: 1.1em;
+  min-width: 100px;
+  text-align: right;
+}
+
+.transaction-amount.negative {
+  color: #ff3b30;
+}
+
+.transaction-amount.positive {
+  color: #34c759;
+}
+
+.account-input {
+  background: #ffffff;
+  color: #1d1d1f;
+  border: 1px solid #ff6b35;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.85em;
+  outline: none;
+  min-width: 120px;
+}
+
+.account-input:focus {
+  border-color: #ff8c42;
+}
+
+.no-transactions {
+  text-align: center;
+  padding: 48px 20px;
+  color: #86868b;
+  font-style: italic;
+}
+
+.daily-view-controls {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.search-input {
+  flex-grow: 1;
+  background: #ffffff;
+  color: #1d1d1f;
+  border: 1px solid #e5e5e7;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 1em;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+.transaction-checkbox {
+  margin-right: 16px;
+  width: 18px;
+  height: 18px;
+  accent-color: #ff6b35;
+}
+
+#searchResultsContainer .transaction-item {
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #ffffff;
+}
+
+/* Centered Message */
+.centered-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  font-size: 1.1em;
+  color: #86868b;
+  text-align: center;
+}
+
+/* Chart Container */
+.chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 700px;
+  margin: 24px auto;
+}
+
+#spendingChart {
+  max-width: 100%;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* Prediction Results */
+#predictionResults {
+  margin-top: 24px;
+}
+
+#predictionResults h3 {
+  color: #1d1d1f;
+  margin-bottom: 16px;
+}
+
+#predictionResults ul {
+  list-style: none;
+  padding: 0;
+}
+
+#predictionResults li {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f5f5f7;
+  border-radius: 6px;
+  color: #1d1d1f;
+}
+
+/* Welcome Screen */
+.welcome-screen {
+  text-align: center;
+  padding: 80px 40px;
+  color: #86868b;
+}
+
+.welcome-screen h1 {
+  color: #1d1d1f;
+  font-size: 2.5em;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.welcome-screen p {
+  font-size: 1.1em;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* Model Management Section */
+.model-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 20px;
+  background: #f5f5f7;
+  border-radius: 12px;
+  align-items: center;
+}
+
+.model-status-indicator {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.model-status-indicator.loaded {
+  background: #d1f4e0;
+  color: #0e8345;
+}
+
+.model-status-indicator.not-loaded {
+  background: #ffe5e5;
+  color: #d32f2f;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px;
+  }
+  
+  .content-scroll {
+    padding: 16px;
+  }
+  
+  .content-bubble {
+    padding: 20px;
+  }
+  
+  .top-bar {
+    padding: 12px 16px;
+  }
+}
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+  <!-- Left Sidebar - Always Visible -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>💰 Budget</h2>
+    </div>
+    <div class="sidebar-content">
+      <div class="view-toggle">
+        <button id="dashboardViewBtn" class="active"><span>📊 Dashboard</span></button>
+        <button id="csvViewBtn"><span>📄 CSV Upload</span></button>
+        <button id="categoriesViewBtn"><span>📁 Categories</span></button>
+        <button id="graphsViewBtn"><span>📈 Graphs</span></button>
+        <button id="dailyTransactionsViewBtn"><span>📅 Daily Transactions</span></button>
+        <button id="modelManagementViewBtn"><span>🤖 Model Management</span></button>
+        <button id="csvManagementViewBtn"><span>💾 CSV Management</span></button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Main Content Area -->
+  <div class="main-content">
+    <!-- Top Bar with Title and Submenu -->
+    <div class="top-bar">
+      <div class="top-bar-title" id="topBarTitle">Dashboard</div>
+      <div class="submenu-buttons" id="submenuButtons">
+        <!-- Submenu buttons will be inserted here dynamically -->
+      </div>
+    </div>
+    
+    <!-- Scrollable Content Area -->
+    <div class="content-scroll">
+      
+      <!-- Dashboard View -->
+      <div id="dashboardView" class="view-content active">
+        <div class="content-bubble">
+          <h2>Welcome to Budget Analysis</h2>
+          <p style="color: #86868b; font-size: 1.1em; line-height: 1.6;">
+            Get started by uploading your CSV file from the <strong>CSV Upload</strong> menu.
+          </p>
+        </div>
+      </div>
+      
+      <!-- CSV Upload View -->
+      <div id="csvView" class="view-content">
+        <div class="content-bubble">
+          <h2>Upload CSV File</h2>
+          <div class="upload-section">
+            <input type="file" id="csvFile" accept=".csv" />
+            <button id="uploadBtn" class="primary-btn">Upload and Parse</button>
+          </div>
+          <div id="columnMappingContainer"></div>
+          <button id="confirmMappingBtn" class="primary-btn" style="display:none;">Confirm Mapping</button>
+          <div id="transactionsList"></div>
+          <button id="trainModelBtn" class="primary-btn" style="display:none; margin-top: 16px;">Train Model</button>
+          <div id="loadingContainer" class="loading-container">
+            <div class="loading-header">
+              <span class="loading-title">Training Model</span>
+              <span class="loading-status" id="loadingStatus">Initializing...</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">0%</div>
+            <div class="training-stats">
+              <div class="stat">
+                <span class="stat-value" id="epochStat">0</span>
+                <span>Epoch</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value" id="accuracyStat">0%</span>
+                <span>Accuracy</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value" id="lossStat">0.000</span>
+                <span>Loss</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value" id="timeStat">0s</span>
+                <span>Time</span>
+              </div>
+            </div>
+          </div>
+          <button id="predictBtn" class="primary-btn" style="display:none; margin-top: 16px;">Predict Categories</button>
+          <div id="predictionResults"></div>
+        </div>
+      </div>
+      
+      <!-- Categories Summary View -->
+      <div id="categoriesView" class="view-content">
+        <div class="content-bubble">
+          <div id="categoriesSummary">
+            <div class="centered-message">No data available. Please upload a CSV file first.</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Graphs View -->
+      <div id="graphsView" class="view-content">
+        <div class="content-bubble">
+          <h2>Spending Graphs</h2>
+          <div style="text-align:center; margin-bottom:24px;">
+            <button id="toggleGraphTypeBtn" class="primary-btn">Show Bar Chart</button>
+          </div>
+          <div class="chart-container">
+            <canvas id="spendingChart" width="600" height="400"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Daily Transactions View -->
+      <div id="dailyTransactionsView" class="view-content">
+        <div class="content-bubble">
+          <h2>Daily Transactions</h2>
+          <div class="daily-view-controls">
+            <input type="text" id="transactionSearchInput" class="search-input" placeholder="🔍 Search transactions...">
+            <button id="selectAllBtn" class="primary-btn">Select All</button>
+            <button id="bulkEditAccountBtn" class="primary-btn">Bulk Edit Account</button>
+          </div>
+          <div id="dailyTransactionsContainer">
+            <div class="centered-message">No data available. Please upload a CSV file first.</div>
+          </div>
+          <div id="searchResultsContainer" style="display: none;"></div>
+        </div>
+      </div>
+      
+      <!-- Model Management View -->
+      <div id="modelManagementView" class="view-content">
+        <div class="content-bubble">
+          <h2>Model Management</h2>
+          <p style="color: #86868b; margin-bottom: 24px;">
+            Manage your trained ML model for transaction categorization.
+          </p>
+          
+          <div class="model-actions">
+            <span class="model-status-indicator not-loaded" id="modelStatusIndicator">
+              Model Not Loaded
+            </span>
+            <button id="deleteModelBtn" class="primary-btn">Delete Model</button>
+            <button id="addModelBtn" class="primary-btn">Load Model from File</button>
+          </div>
+          
+          <div style="margin-top: 32px; padding: 20px; background: #f5f5f7; border-radius: 12px;">
+            <h3 style="margin-top: 0;">About the Model</h3>
+            <p style="color: #1d1d1f; line-height: 1.6;">
+              The machine learning model learns from your categorized transactions to automatically 
+              predict categories for new transactions. Train the model from the CSV Upload section 
+              after categorizing your transactions.
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- CSV Management View -->
+      <div id="csvManagementView" class="view-content">
+        <div class="content-bubble">
+          <h2>CSV Management</h2>
+          <div id="csvManagementListContainer">
+            <!-- List of saved CSVs will be rendered here -->
+          </div>
+          <div style="margin-top: 24px;">
+            <button id="saveCurrentCsvBtn" class="primary-btn">Save Current CSV</button>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+    <!-- Add TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <script>
+      // Force TensorFlow.js to use CPU backend
+      tf.setBackend('cpu');
+    </script>
+    
+    <!-- Add Papa Parse for CSV parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.5.3/papaparse.min.js"></script>
+    
+    <!-- Add our renderer script -->
+    <script src="renderer.js"></script>
+    <br>
+    <br>
+  </body>
+</html>
